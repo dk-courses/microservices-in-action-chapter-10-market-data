@@ -10,7 +10,7 @@ def withPod(body) {
 }
 
 withPod {
-  node('pod') {
+  node('jnlp') {
     def tag = "${env.BRANCH_NAME}.${env.BUILD_NUMBER}"
     def service = "market-data:${tag}"
 
