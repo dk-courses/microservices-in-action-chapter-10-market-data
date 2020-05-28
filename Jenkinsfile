@@ -1,5 +1,5 @@
 def withPod(body) {
-  podTemplate(label: 'pod', serviceAccount: 'jenkins', containers: [
+    podTemplate(label: 'pod', serviceAccount: 'jenkins', containers: [
       containerTemplate(name: 'docker', image: 'docker', command: 'cat', ttyEnabled: true),
       containerTemplate(name: 'kubectl', image: 'lachlanevenson/k8s-kubectl', command: 'cat', ttyEnabled: true)
     ],
@@ -10,33 +10,33 @@ def withPod(body) {
 }
 
 withPod {
-  node('pod') {
-    def tag = "${env.BRANCH_NAME}.${env.BUILD_NUMBER}"
-    def service = "market-data:${tag}"
+    node('pod') {
+        def tag = "${env.BRANCH_NAME}.${env.BUILD_NUMBER}"
+        def service = "market-data:${tag}"
 
-    checkout scm
+        checkout scm
 
-    container('docker') {
-      stage('Build') {
-        sh("docker build -t ${service} .")
-      }
+        container('docker') {
+            stage('Build') {
+                sh("docker build -t ${service} .")
+            }
 
-      stage('Test') {
-        try {
-            sh("docker run -v `pwd`:/workspace --rm ${service} python setup.py test")
-        } finally {
-            step([$class: 'JUnitResultArchiver', testResults: 'results.xml'])
+            stage('Test') {
+                try {
+                    sh("docker run -v `pwd`:/workspace --rm ${service} python setup.py test")
+            } finally {
+                    step([$class: 'JUnitResultArchiver', testResults: 'results.xml'])
+                }
+            }
+
+            stage('Publish') {
+                withDockerRegistry(registry: [credentialsId: 'dockerhub']) {
+                    def tagToDeploy = "thyms/${service}"
+
+                    sh("docker tag ${service} ${tagToDeploy}")
+                    sh("docker push ${tagToDeploy}")
+                }
+            }
         }
-      }
-
-      stage('Publish') {
-        withDockerRegistry(registry: [credentialsId: 'dockerhub']) {
-            def tagToDeploy = "[your-account]/${service}"
-
-            sh("docker tag ${service} ${tagToDeploy}")
-            sh("docker push ${tagToDeploy}")
-        }
-      }
     }
-  }
 }
