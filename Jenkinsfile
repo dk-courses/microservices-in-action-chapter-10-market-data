@@ -37,12 +37,33 @@ withPod {
                     sh("docker push ${tagToDeploy}")
                 }
             }
-            stage('Deploy') {
-                sh("sed -i.bak 's#BUILD_TAG#${tagToDeploy}#' ./deploy/staging/*.yml")
 
-                container('kubectl') {
-                    sh('kubectl --namespace=staging apply -f deploy/staging/')
+            def deploy = load('deploy.groovy')
+
+            stage('Deploy to staging') {
+                deploy.toKubernetes(tagToDeploy, 'staging', 'market-data')
+            }
+
+            stage('Approve release?') {
+                input "Release ${tagToDeploy} CANARY to production?"
+            }
+
+            stage('Deploy canary') {
+                deploy.toKubernetes(tagToDeploy, 'canary', 'market-data-canary')
+
+                try {
+                    input message: "Continue releasing ${tagToDeploy} to production?"
+                } catch (Exception e) {
+                    deploy.rollback('market-data-canary')
                 }
+            }
+
+            stage('Approve release?') {
+                input "Release ${tagToDeploy} to production?"
+            }
+
+            stage('Deploy to production') {
+                deploy.toKubernetes(tagToDeploy, 'production', 'market-data')
             }
         }
     }
