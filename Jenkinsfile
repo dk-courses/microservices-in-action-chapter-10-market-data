@@ -20,11 +20,21 @@ withPod {
       stage('Build') {
         sh("docker build -t ${service} .")
       }
+
       stage('Test') {
         try {
             sh("docker run -v `pwd`:/workspace --rm ${service} python setup.py test")
         } finally {
             step([$class: 'JUnitResultArchiver', testResults: 'results.xml'])
+        }
+      }
+
+      stage('Publish') {
+        withDockerRegistry(registry: [credentialsId: 'dockerhub']) {
+            def tagToDeploy = "[your-account]/${service}"
+
+            sh("docker tag ${service} ${tagToDeploy}")
+            sh("docker push ${tagToDeploy}")
         }
       }
     }
