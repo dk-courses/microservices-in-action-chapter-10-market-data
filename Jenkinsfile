@@ -29,9 +29,9 @@ withPod {
                 }
             }
 
+            def tagToDeploy = "thyms/${service}"
             stage('Publish') {
                 withDockerRegistry(registry: [credentialsId: 'dockerhub']) {
-                    def tagToDeploy = "thyms/${service}"
 
                     sh("docker tag ${service} ${tagToDeploy}")
                     sh("docker push ${tagToDeploy}")
